@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nepalese Names | Explorer</title>
+    <style>
+        /* Modern System Font Stack (No Google Fonts needed) */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header { text-align: center; margin-bottom: 3rem; }
+        header h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; }
+        header h1 span { color: var(--primary); }
+        header p { color: var(--text-muted); margin-top: 0.5rem; font-size: 1.1rem; }
+
+        /* Controls Area */
+        .controls {
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--card-bg);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 0.25rem;
+            border-radius: 0.75rem;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            border: none;
+            padding: 0.6rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Search Input */
+        .search-container { flex: 1; min-width: 200px; }
+        .search-input {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            outline: none;
+            transition: ring 0.2s;
+        }
+        .search-input:focus { border-color: var(--primary); ring: 2px solid var(--primary); }
+
+        /* Grid & Cards */
+        .names-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+            border-color: #d1d5db;
+        }
+
+        .card-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .card-name { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+
+        /* Status States */
+        .loading { text-align: center; padding: 3rem; color: var(--text-muted); font-weight: 500; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Nepalese <span> Names</span></h1>
+        <p>Browsing local name records</p>
+    </header>
+
+    <div class="controls">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchView('first')">First Names</button>
+            <button class="tab-btn" onclick="switchView('surname')">Surnames</button>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search names..." oninput="handleSearch()">
+        </div>
+    </div>
+
+    <div id="loading" class="loading">Parsing local CSV data...</div>
+    <div id="namesGrid" class="names-grid"></div>
+</div>
+
+<script>
+    let data = { first: [], surname: [] };
+    let currentView = 'first';
+
+    // Initialize the app
+    async function init() {
+        try {
+            const [firstRaw, surRaw] = await Promise.all([
+                fetch('unique_first_names.csv').then(r => r.text()),
+                fetch('unique_surnames.csv').then(r => r.text())
+            ]);
+
+            data.first = parseCSV(firstRaw);
+            data.surname = parseCSV(surRaw);
+            
+            document.getElementById('loading').classList.add('hidden');
+            render();
+        } catch (err) {
+            document.getElementById('loading').innerText = "Error: Ensure files exist and you're using a local server.";
+            console.error(err);
+        }
+    }
+
+    function parseCSV(text) {
+        return text.split('\n')
+            .slice(1) // Skip header
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+    }
+
+    function switchView(view) {
+        currentView = view;
+        // Update UI buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText.toLowerCase().includes(view));
+        });
+        render();
+    }
+
+    function handleSearch() {
+        render();
+    }
+
+    function render() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const grid = document.getElementById('namesGrid');
+        const list = data[currentView];
+        
+        const filtered = list.filter(name => name.toLowerCase().includes(searchTerm));
+        
+        grid.innerHTML = filtered.map(name => `
+            <div class="card">
+                <div class="card-label">${currentView} name</div>
+                <div class="card-name">${name}</div>
+            </div>
+        `).join('');
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem;">No results found.</div>`;
+        }
+    }
+
+    init();
+</script>
+
+</body>
+</html>
